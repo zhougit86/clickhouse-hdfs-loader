@@ -23,6 +23,8 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.codehaus.jettison.json.JSONException;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.sql.*;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -289,7 +291,8 @@ public abstract class AbstractClickhouseLoaderMapper<KEYIN, VALUEIN, KEYOUT, VAL
         }
         cache.records.append(record).append("\n");
         cache.recordsCount ++;
-        if(cache.recordsCount >= batchSize / getClickhouseClusterHostList().size()){
+        // INSERT查询的行少于1048576，则以原子方式生成
+        if(cache.recordsCount >= batchSize || cache.recordsCount >= 1048576){
             cache.ready = true;
             batchInsert(context, nodes, configuration.getClickhouseHttpPort(), cache, this.maxTries, configuration.getBoolean(ConfigurationKeys.CLI_P_DIRECT, false));
         }
@@ -320,9 +323,13 @@ public abstract class AbstractClickhouseLoaderMapper<KEYIN, VALUEIN, KEYOUT, VAL
             done = true;
             for (String h : hostStatus.keySet()){
                 if (!hostStatus.get(h) & cache.ready){
-                    log.info("Clickhouse Loader : try ["+count +"] loading data to host -> " + h + ", batchsize -> "+cache.recordsCount);
                     try {
                         long l = System.currentTimeMillis();
+                        if (this.distLookupReplicatedTable){
+                            // 重置host为任意一个可用的地址
+                            h = getAliveNodeAddress(nodes, port);
+                        }
+                        log.info("Clickhouse Loader : try ["+count +"] loading data to host -> " + h + ", batchsize -> "+cache.recordsCount);
                         ClickhouseClient client = ClickhouseClientHolder.getClickhouseClient(h, port, distributedLocalDatabase, config.get(ConfigurationKeys.CLI_P_CLICKHOUSE_USERNAME), config.get(ConfigurationKeys.CLI_P_CLICKHOUSE_PASSWORD));
                         client.insert(cache.records.toString());
                         hostStatus.put(h, true);
@@ -334,7 +341,7 @@ public abstract class AbstractClickhouseLoaderMapper<KEYIN, VALUEIN, KEYOUT, VAL
                             log.error("Clickhouse JDBC: ERROR SQL:"+cache.records.toString());
                         }
                         try {
-                            Thread.sleep((tries+1)*10000l);
+                            Thread.sleep((2^(tries+1))*100000l);
                         } catch (InterruptedException e1) {
                         }
                     }
@@ -668,5 +675,27 @@ public abstract class AbstractClickhouseLoaderMapper<KEYIN, VALUEIN, KEYOUT, VAL
         return hivePartitions;
     }
 
+    protected String getAliveNodeAddress(ClusterNodes nodes, int port) throws Exception{
+        String alive = null;
+        for (int i =0; i< nodes.getHostsCount(); i++){
+            try {
+                String n = nodes.hostAddress(i);
+                String url_str = "http://"+n+":"+port;
+                URL url = new URL(url_str);
+                HttpURLConnection conn = (HttpURLConnection)url.openConnection();
+                int state = conn.getResponseCode();
+                if (state == 200){
+                    alive = n;
+                    break;
+                }
+            }catch (Exception e){
+                log.warn(e.getMessage(), e);
+            }
+        }
+        if (alive == null){
+            throw new Exception("Cannot get alive host.");
+        }
+        return alive;
+    }
 
 }

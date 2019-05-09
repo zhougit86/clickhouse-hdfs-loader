@@ -42,7 +42,7 @@ public class MainCliParameterParser {
     public String dt;
 
     @Option(name="--batch-size", required = false, usage = "batch size load data into clickhouse")
-    public int batchSize = 196608;
+    public int batchSize = 100000;
 
     @Option(name="--max-tries", required = false, usage = "当在导入发生异常时的重试次数")
     public int maxTries = 3;
