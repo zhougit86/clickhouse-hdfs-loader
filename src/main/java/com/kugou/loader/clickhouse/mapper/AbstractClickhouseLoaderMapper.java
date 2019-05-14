@@ -341,7 +341,7 @@ public abstract class AbstractClickhouseLoaderMapper<KEYIN, VALUEIN, KEYOUT, VAL
                             log.error("Clickhouse JDBC: ERROR SQL:"+cache.records.toString());
                         }
                         try {
-                            Thread.sleep((2^(tries+1))*100000l);
+                            Thread.sleep((2^count)*100000l);
                         } catch (InterruptedException e1) {
                         }
                     }

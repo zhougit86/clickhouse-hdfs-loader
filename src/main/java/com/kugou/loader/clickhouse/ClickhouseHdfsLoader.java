@@ -152,6 +152,8 @@ public class ClickhouseHdfsLoader extends Configured implements Tool {
             numReduceTask = cliParameterParser.loaderTaskExecute;
         }
         conf.setInt(ConfigurationKeys.CL_NUM_REDUCE_TASK, numReduceTask);
+        // 设置task timeout
+        conf.set("mapreduce.task.timeout", "1800000");
 
         Job job = Job.getInstance(conf);
         job.setJarByClass(ClickhouseHdfsLoader.class);
