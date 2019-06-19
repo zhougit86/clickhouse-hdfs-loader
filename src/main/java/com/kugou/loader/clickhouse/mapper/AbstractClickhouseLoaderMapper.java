@@ -37,7 +37,7 @@ public abstract class AbstractClickhouseLoaderMapper<KEYIN, VALUEIN, KEYOUT, VAL
 
     private static final Log log = LogFactory.getLog(AbstractClickhouseLoaderMapper.class);
 
-    private static final Pattern HIVE_PARTITIONS_PATTERN = Pattern.compile("([0-9a-zA-Z]+)=([0-9a-zA-Z_\\-]+)/?");
+    private static final Pattern HIVE_PARTITIONS_PATTERN = Pattern.compile("([0-9a-zA-Z_]+)=([0-9a-zA-Z_\\-]+)/?");
     private static final String  CLICKHOUSE_COUNTERS_GROUP = "Clickhouse Loader Counters";
 
     protected int               maxTries;
